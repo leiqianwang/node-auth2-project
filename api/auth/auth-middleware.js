@@ -1,5 +1,6 @@
 const { JWT_SECRET } = require("../secrets"); // use this secret!
 const { findBy } = require('../users/users-model');
+const jwt = require('jsonwebtoken');
 
 const restricted = (req, res, next) => {
   /*
@@ -34,22 +35,38 @@ const restricted = (req, res, next) => {
 //   }
 // }
 
-  const token = req.headers.authorization;
+//   const token = req.headers.authorization;
 
-  if (token) {
-    jwt.verify(token, JWT_SECRET, (err, decodedToken) => {
-      if (err) {
-       res.status(401).json({ message: "Token invalid" });
-      }else {
-        req.user = { username: decodedToken.username };
-        req.decodedToken = decodedToken;
-        next();
-      }
+//   if (token) {
+//     jwt.verify(token, JWT_SECRET, (err, decodedToken) => {
+//       if (err) {
+//        res.status(401).json({ message: "Token invalid" });
+//       }else {
+//         req.user = { username: decodedToken.username };
+//         req.decodedToken = decodedToken;
+//         next();
+//       }
+//   });
+//          }else {
+//           res.status(401).json({ message: 'Token required'});
+//          }
+
+// }
+
+const token = req.headers.authorization;
+  
+if (!token) {
+  return res.status(401).json({ message: 'Token required' });
+}
+
+jwt.verify(token, JWT_SECRET, (err, decodedToken) => {
+  if (err) {
+    return res.status(401).json({ message: 'Token invalid' });
+  }
+
+  req.decodedToken = decodedToken;
+  next();
   });
-         }else {
-          res.status(401).json({ message: 'Token required'});
-         }
-
 }
 
 const only = role_name => (req, res, next) => {
@@ -65,11 +82,17 @@ const only = role_name => (req, res, next) => {
   */
    // Assuming the decoded token is attached to the req object by the preceding 'restricted' middleware
 
-  if (req.decodedToken && req.decodedToken.role === role_name) {
-    next(); // Continue to the next middleware or route handler if the role matches
-  } else {
-    res.status(403).json({ message: "This is not for you" }); // Respond with 403 if roles do not match
-  }
+  // if (req.decodedToken && req.decodedToken.role_name === role_name) {
+  //   req.decodedToken = decodedToken;
+  //   next(); // Continue to the next middleware or route handler if the role matches
+  // } else {
+  //   res.status(403).json({ message: "This is not for you" }); // Respond with 403 if roles do not match
+  // }
+       if(role_name === req.decodedToken.role_name) {
+        next()
+       }else {
+        next({ status: 403, message: 'This is not for you'})
+       }
 
 }
 
@@ -128,6 +151,7 @@ const validateRoleName = (req, res, next) => {
     }else if(req.body.role_name.trim().length > 32) {
       next({ status: 422, message: 'Role name can not be longer than 32 chars'});
     }else {
+      req.role_name = req.body.role_name.trim();
       next()
     }
 }
